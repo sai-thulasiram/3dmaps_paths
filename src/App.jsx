@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import mapboxgl from 'mapbox-gl'; // eslint-disable-line
 import { Threebox } from 'threebox-plugin'
 import "threebox-plugin/dist/threebox.css"
+import Stats from './stats.js';
+
 
 mapboxgl.accessToken = 'pk.eyJ1IjoibWFwc2FpIiwiYSI6ImNsbTJ5MmZvajB6N3AzZXA5cmIyMzV3YWoifQ.aBMiWfn5mRYjylCNUxISJQ';
 
@@ -14,18 +16,97 @@ export default function App() {
 
   const mapContainer = useRef(null);
   const map = useRef(null);
-  const [zoom, setZoom] = useState(9);
+  const [zoom, setZoom] = useState(13);
+
+  function drawLines() {
+    var lines = new Array();
+		var arcSegments = 25;
+		var lineQuantity = 50;
+
+		for (var i = 0; i < lineQuantity; i++){
+
+			var line = new Array();
+			var destination = [300*(Math.random()-0.5), 140*(Math.random()-0.5)];
+			var maxElevation = Math.pow(Math.abs(destination[0]*destination[1]), 0.5) * 80000;
+
+			var increment = destination.map(function(direction){
+				return direction/arcSegments;
+			})
+
+			for (var l = 0; l<=arcSegments; l++){
+				var waypoint = increment.map(function(direction){
+					return direction * l
+				})
+
+				var waypointElevation = Math.sin(Math.PI*l/arcSegments) * maxElevation;
+
+				waypoint.push(waypointElevation);
+				line.push(waypoint);
+			}
+
+			lines.push(line)
+		}
+
+    return lines;
+
+  }
+
+  function animate(stats) {
+    requestAnimationFrame(animate);
+    stats.update();
+  }
+
+  function plotLines(e) {
+
+      var lines = drawLines();
+    // stats
+			var stats = new Stats();
+			mapContainer.current.appendChild(stats.dom);
+			// animate(stats);
+
+			e.target.addLayer({
+				id: 'custom_layer1',
+				type: 'custom',
+				renderingMode: '3d',
+				onAdd: function(map, mbxContext){
+
+					// instantiate threebox
+					window.tb = new Threebox(
+						map, 
+						mbxContext,
+						{defaultLights: true}
+					);
+
+					for (let line of lines) {
+						var lineOptions = {
+							geometry: line,
+							color: (line[1][1]/180) * 0xffffff, // color based on latitude of endpoint
+							width: Math.random() + 1 // random width between 1 and 2
+						}
+
+						let lineMesh = window.tb.line(lineOptions);
+
+						window.tb.add(lineMesh)
+					}
+
+				},
+				
+				render: function(gl, metric){
+          window.tb.update();
+				}
+			});
+  }
 
   useEffect(() => {
     if (map.current) return; // initialize map only once
 
-      const origin = [-122.47920912, 37.716351775];
+      const origin = [ 75.3412,33.2778];
       map.current = new mapboxgl.Map({
       container: mapContainer.current,
       style: 'mapbox://styles/mapbox/streets-v12',
       center: origin,
       zoom: zoom,
-      pitch: 64.9,
+      pitch: 75,
       bearing: 172.5,
       antialias: true // create the gl context with MSAA antialiasing, so custom layers are antialiased
     });
@@ -58,9 +139,9 @@ export default function App() {
               // enableTooltips: true,
             });
             const options = {
-              obj: "/soldier.glb",
+              obj: "/radar.glb",
               type: "gltf",
-              scale: 20,
+              scale: 60,
               units: "meters",
               rotation: { x: 90, y: 0, z: 0 },
               anchor: "center" //default rotation
@@ -89,6 +170,8 @@ export default function App() {
           }
         };
         e.target.addLayer(customLayer);
+
+        plotLines(e);
       });
       map.current.on("load", (e) => {
         console.log(e);
@@ -115,6 +198,39 @@ export default function App() {
       setscale(newScale);
     }
   };
+
+  function drawLines() {
+    var lines = new Array();
+		var arcSegments = 25;
+		var lineQuantity = 50;
+
+		for (var i = 0; i < lineQuantity; i++){
+
+			var line = new Array();
+			var destination = [300*(Math.random()-0.5), 140*(Math.random()-0.5)];
+			var maxElevation = Math.pow(Math.abs(destination[0]*destination[1]), 0.5) * 80000;
+
+			var increment = destination.map(function(direction){
+				return direction/arcSegments;
+			})
+
+			for (var l = 0; l<=arcSegments; l++){
+				var waypoint = increment.map(function(direction){
+					return direction * l
+				})
+
+				var waypointElevation = Math.sin(Math.PI*l/arcSegments) * maxElevation;
+
+				waypoint.push(waypointElevation);
+				line.push(waypoint);
+			}
+
+			lines.push(line)
+		}
+
+    return lines;
+
+  }
 
   return (
     <div>
